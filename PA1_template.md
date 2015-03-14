@@ -3,27 +3,28 @@
 
 ## Loading and preprocessing the data
 
+We simply load the data in using *read.csv*. We perform no extra processing 
+on the data.
+
 
 ```r
 raw.data <- read.csv('data/activity.csv')
 ```
 
 
-
 ## What is mean total number of steps taken per day?
 
-We can easily calculate this by grouping the data by the date, and them
-summing all the steps occuring on that date. The *dplyr* package makes this 
-easy to do:
+We can easily calculate the total number of steps taken per day
+by grouping the data by the date, and then summing all the steps occuring on that 
+date:
 
 
 ```r
 library(dplyr)
-
 total.steps <- raw.data %>% group_by(date) %>% summarise(total = sum(steps))
 ```
 
-We can quickly examine the data using head:
+The first few rows of this data looks like this:
 
 
 ```r
@@ -62,8 +63,8 @@ create_histogram(total.steps, "Histogram of the total number of steps per day")
 
 ![](PA1_template_files/figure-html/unnamed-chunk-4-1.png) 
 
-To calculate the mean and the median number of steps taken per day, we again
-use the *dplyr* package:
+The mean and median of the total number of steps taken per day can be calculated
+like so:
 
 
 ```r
@@ -75,6 +76,8 @@ knitr::kable(summaries, digits = 2)
      mean   median
 ---------  -------
  10766.19    10765
+
+Notice that both values are very similar to one another.
 
 
 ## What is the average daily activity pattern?
@@ -88,6 +91,8 @@ interval.means <- raw.data %>%
     group_by(interval) %>% 
     summarise(mean = mean(steps, na.rm = TRUE))
 ```
+
+Then we plot this average as a timeseries line-chart: 
 
 
 ```r
@@ -107,20 +112,17 @@ like so:
 
 
 ```r
-filter(interval.means, mean == max(interval.means$mean))
+maximum.interval <- filter(interval.means, mean == max(interval.means$mean))
 ```
 
-```
-## Source: local data frame [1 x 2]
-## 
-##   interval     mean
-## 1      835 206.1698
-```
+Interval 835 has the maximum mean of 
+206.17 steps.
 
 
 ## Imputing missing values
 
 The number of rows that contain NA values can be calculated as:
+
 
 ```r
 missing <- nrow(filter(raw.data, is.na(steps)))
@@ -129,31 +131,36 @@ missing <- nrow(filter(raw.data, is.na(steps)))
 There are 2304 rows with NA values.
 
 We will fill in the missing step data by substituting the mean value for that
-particular interval across all days in the data set. These values were
-already previously calculated. 
+interval across all days in the data set. These values were
+already previously calculated above and are stored in the *interval.means*
+variable.
 
 
 ```r
 imputed.data <- raw.data
 
 for (i in seq_len(nrow(raw.data))) {
+    # Test if the value is missing
     if (is.na(imputed.data[i,1])) {
         interval <- imputed.data[i,]$interval
+        # Replace the NA
         imputed.data[i, 1] <- interval.means[interval.means$interval == interval,]$mean
     }
 }
 ```
 
-Let us again graph this as a histogram:
+Let us again graph the total number of steps per day as a histogram:
 
 
 ```r
 imputed.total.steps <- imputed.data %>% group_by(date) %>% summarise(total = sum(steps))
 create_histogram(imputed.total.steps, 
-                 "Histogram of the total number of steps, including imputed")
+                 "Histogram of the total number of steps, including imputed values")
 ```
 
 ![](PA1_template_files/figure-html/unnamed-chunk-11-1.png) 
+
+And we can calculate the mean and median number of steps taken:
 
 
 ```r
@@ -167,9 +174,13 @@ knitr::kable(imputed.summaries, digits = 2)
 ---------  ---------
  10766.19   10766.19
 
-Mean and median are nearly identical. 
+Mean and median calculated using imputed values are nearly identical to those
+calculated for the raw data set.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+For every row of the imputed data set, we add a factor indicating if the day
+is a week day or not.
 
 
 ```r
@@ -177,7 +188,7 @@ imputed.data <- imputed.data %>%
     transform(
         day = factor(ifelse(weekdays(as.POSIXct(date)) %in% c("Saturday", "Sunday"),
                             "WEEKEND", "WEEKDAY"))
-        )
+    )
 
 knitr::kable(head(imputed.data), digits = 2)
 ```
@@ -193,7 +204,8 @@ knitr::kable(head(imputed.data), digits = 2)
   0.08  2012-10-01          20  WEEKDAY 
   2.09  2012-10-01          25  WEEKDAY 
 
-Now calculate average intervals.
+We then calculate the daily average for each interval for both the week days 
+and weekends. 
 
 
 ```r
@@ -201,6 +213,9 @@ day.interval.means <- imputed.data %>%
     group_by(day, interval) %>% 
     summarise(mean = mean(steps))
 ```
+
+And now we show a timeseries line-chart of the average time per for weekends vs
+week days.
 
 
 ```r
