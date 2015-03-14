@@ -1,14 +1,10 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+# Reproducible Research: Peer Assessment 1
 
 
 ## Loading and preprocessing the data
 
-```{r}
+
+```r
 raw.data <- read.csv('data/activity.csv')
 ```
 
@@ -20,22 +16,35 @@ We can easily calculate this by grouping the data by the date, and them
 summing all the steps occuring on that date. The *dplyr* package makes this 
 easy to do:
 
-```{r, message=FALSE}
+
+```r
 library(dplyr)
 
 total.steps <- raw.data %>% group_by(date) %>% summarise(total = sum(steps))
-
 ```
 
 We can quickly examine the data using head:
 
-```{r}
+
+```r
 knitr::kable(head(total.steps))
 ```
 
+
+
+date          total
+-----------  ------
+2012-10-01       NA
+2012-10-02      126
+2012-10-03    11352
+2012-10-04    12116
+2012-10-05    13294
+2012-10-06    15420
+
 And we can use *ggplot2* to show a histogram of the total number of steps taken.
 
-```{r}
+
+```r
 library(ggplot2)
 
 create_histogram <- function(data, title) {
@@ -49,17 +58,23 @@ create_histogram <- function(data, title) {
 }
 
 create_histogram(total.steps, "Histogram of the total number of steps per day")
-
 ```
+
+![](PA1_template_files/figure-html/unnamed-chunk-4-1.png) 
 
 To calculate the mean and the median number of steps taken per day, we again
 use the *dplyr* package:
 
-```{r}
+
+```r
 summaries <- total.steps %>% summarise(mean = mean(total, na.rm = TRUE),
                                        median = median(total, na.rm = TRUE))
 knitr::kable(summaries, digits = 2)
 ```
+
+     mean   median
+---------  -------
+ 10766.19    10765
 
 
 ## What is the average daily activity pattern?
@@ -67,13 +82,15 @@ knitr::kable(summaries, digits = 2)
 First, we want to calculate the average number of steps taken per interval
 period, across all days:
 
-```{r}
+
+```r
 interval.means <- raw.data %>% 
     group_by(interval) %>% 
     summarise(mean = mean(steps, na.rm = TRUE))
 ```
 
-```{r}
+
+```r
 g <- ggplot(interval.means, aes(x = interval, y = mean)) 
 g <- g + geom_line()
 g <- g + labs(title = "Average number of steps per 5 minute time interval",
@@ -81,32 +98,42 @@ g <- g + labs(title = "Average number of steps per 5 minute time interval",
               y = "Average number of steps")
 g <- g + theme_light()
 print(g)
-
 ```
+
+![](PA1_template_files/figure-html/unnamed-chunk-7-1.png) 
 
 The interval that has on average the maximum number of steps can be calculated
 like so:
 
-```{r}
+
+```r
 filter(interval.means, mean == max(interval.means$mean))
+```
+
+```
+## Source: local data frame [1 x 2]
+## 
+##   interval     mean
+## 1      835 206.1698
 ```
 
 
 ## Imputing missing values
 
 The number of rows that contain NA values can be calculated as:
-```{r}
+
+```r
 missing <- nrow(filter(raw.data, is.na(steps)))
 ```
 
-There are `r missing` rows with NA values.
+There are 2304 rows with NA values.
 
 We will fill in the missing step data by substituting the mean value for that
 particular interval across all days in the data set. These values were
 already previously calculated. 
 
-```{r}
 
+```r
 imputed.data <- raw.data
 
 for (i in seq_len(nrow(raw.data))) {
@@ -119,24 +146,33 @@ for (i in seq_len(nrow(raw.data))) {
 
 Let us again graph this as a histogram:
 
-```{r}
+
+```r
 imputed.total.steps <- imputed.data %>% group_by(date) %>% summarise(total = sum(steps))
 create_histogram(imputed.total.steps, 
                  "Histogram of the total number of steps, including imputed")
 ```
 
-```{r}
+![](PA1_template_files/figure-html/unnamed-chunk-11-1.png) 
+
+
+```r
 imputed.summaries <- imputed.total.steps %>% 
     summarise(mean = mean(total, na.rm = TRUE), 
               median = median(total, na.rm = TRUE))
 knitr::kable(imputed.summaries, digits = 2)
 ```
 
+     mean     median
+---------  ---------
+ 10766.19   10766.19
+
 Mean and median are nearly identical. 
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
-```{r}
+
+```r
 imputed.data <- imputed.data %>%
     transform(
         day = factor(ifelse(weekdays(as.POSIXct(date)) %in% c("Saturday", "Sunday"),
@@ -146,15 +182,28 @@ imputed.data <- imputed.data %>%
 knitr::kable(head(imputed.data), digits = 2)
 ```
 
+
+
+ steps  date          interval  day     
+------  -----------  ---------  --------
+  1.72  2012-10-01           0  WEEKDAY 
+  0.34  2012-10-01           5  WEEKDAY 
+  0.13  2012-10-01          10  WEEKDAY 
+  0.15  2012-10-01          15  WEEKDAY 
+  0.08  2012-10-01          20  WEEKDAY 
+  2.09  2012-10-01          25  WEEKDAY 
+
 Now calculate average intervals.
 
-```{r}
+
+```r
 day.interval.means <- imputed.data %>%     
     group_by(day, interval) %>% 
     summarise(mean = mean(steps))
 ```
 
-```{r}
+
+```r
 g <- ggplot(day.interval.means, aes(x = interval, y = mean)) 
 g <- g + geom_line()
 g <- g + facet_wrap(~ day, nrow = 2)
@@ -164,3 +213,5 @@ g <- g + labs(title = "Average number of steps per 5 minute time interval",
 g <- g + theme_light()
 print(g)
 ```
+
+![](PA1_template_files/figure-html/unnamed-chunk-15-1.png) 
